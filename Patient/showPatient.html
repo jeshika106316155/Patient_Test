@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8" />
+
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <link rel='stylesheet' typeof='text/css' media='all' href='/Style/Reset.css' />
+    <link rel='stylesheet' typeof='text/css' media='all' href='/Style/Site.css' />
+    <link rel='stylesheet' typeof='text/css' media='all' href='/Style/Patient.css' />
+
+    <title>FHIR 病人</title>
+</head>
+
+<body>
+    <div id="Header">
+        <div id="Logo"><img class="Logo" src="https://www.hl7.org/fhir/assets/images/fhir-logo-www.png" /></div>
+    </div>
+    <div id="Bodyer">
+        <div id="Head"></div>
+        <div id="Left"></div>
+        <div id="Body">
+            <div id="Add">
+                <div class="Header">
+                    <div class="Title">顯示病人</div>
+                </div>
+                <div class="Bodyer">
+                    <ul class="L1s">
+                        <li class="L1 i1 Name">
+                            <div class="Name">顯示條件：</div>
+                            <div class="Value">
+                                <div class="Value">
+                                    <select id="conditionPatient" onchange="jsFunction(this);">
+                                        <option value="Id">Id</option>
+                                        <option value="Identifier">Identifier</option>
+                                        <option value="Organization">Organization</option>
+                                    </select>
+                                </div>
+                                <div id="valueBox"></div>
+                            </div>
+                            <button type="button" onclick="searchPatient()">搜尋</button>
+                            <div class="Message"></div>
+                            <div class="Clear"></div>
+                        </li>
+                    </ul>
+                    <div class="Clear"></div>
+                </div>
+            </div>
+            *For patient with managing organization is "Organization / MITW.ForContact", the row can be selected to
+            display its contact information.
+            <div id="listPatient"></div>
+            <div id="contactBox"></div>
+        </div>
+        <div id="Right"></div>
+        <div id="Foot"></div>
+    </div>
+    <div id="Footer">
+        <div id="CopyRight">
+            Copyright © 2019 Department of Medical Informatics, Tzu Chi University All rights reserved
+        </div>
+    </div>
+</body>
+<script>
+    var fhirurl = "https://startfhir.dicom.org.tw/fhir/";   //change to local + token
+    var patientObservation;
+    var previousRow;
+    function jsFunction(value) {
+        var valueBox = document.getElementById("valueBox");
+        clearDiv(valueBox);
+        if (value.value == 'Id' || value.value == 'Identifier') {
+            var input = document.createElement("input");
+            input.id = "textValue";
+            valueBox.appendChild(input);
+        }
+        else {
+            var x = document.createElement("SELECT");
+            x.id = "typeOrganization";
+            var organization = ["Organization/MITW.ForPHR", "Organization/MITW.ForIdentifier", "Organization/MITW.ForContact"];
+            for (var i = 0; i < organization.length; i++) {
+                var z = document.createElement("option");
+                z.value = organization[i];
+                z.innerHTML = organization[i];
+                x.appendChild(z);
+            }
+            valueBox.appendChild(x);
+        }
+    }
+    function clearDiv(elementID) {
+        elementID.innerHTML = "";
+    }
+    function searchPatient() {
+        var conditionValue = '';
+        var condition = document.getElementById("conditionPatient").value;
+        if (condition == "Organization")
+            conditionValue = document.getElementById("typeOrganization").value;
+        else
+            conditionValue = document.getElementById("textValue").value;
+        var strUrl;
+        switch (condition) {
+            case "Id":
+                strUrl = fhirurl + "Patient" + "/" + conditionValue;
+                break;
+            case "Identifier":
+                strUrl = fhirurl + "Patient" + "?identifier=" + conditionValue;
+                break;
+            case "Organization":
+                strUrl = fhirurl + "Patient" + "?organization=" + conditionValue;
+                break;
+        }
+        getJSON(strUrl);
+    }
+    function getJSON(strUrl) {
+        var xhr = new XMLHttpRequest();
+        xhr.open('GET', strUrl, true);
+        xhr.setRequestHeader("Content-type", 'application/json');
+        xhr.onreadystatechange = function () {
+            if (this.readyState == 4) // && this.status == 201) 
+            {
+                patientObservation = JSON.parse(this.responseText);
+                //setTablePatient();
+                setTablePatient(patientObservation);
+                //alert(this.responseText);
+            }
+        }
+        xhr.send();
+    }
+    function setTablePatient(patientObservation) {
+        clearDiv(document.getElementById("contactBox"));
+        clearDiv(document.getElementById("listPatient"));
+        var condition = document.getElementById("conditionPatient").value;
+        var table = document.createElement("table");
+        table.id = "tablePatient";
+        table.style.border = "3px solid #000"
+        var bundle;
+        if (patientObservation.entry != undefined) {
+            bundle = patientObservation;
+            patientObservation = patientObservation.entry[0].resource;
+        }
+        if (patientObservation.managingOrganization.reference == "Organization/MITW.ForPHR") {
+            var cellText = ["No", "Id", "Identifier", "Managing Organization"];
+        }
+        else {
+            var cellText = ["No", "Id", "Identifier", "Name", "Gender", "Birthdate", "Managing Organization"];
+        }
+        setfirstRow(table, cellText);
+        if (bundle != undefined) {
+            for (var i = 0; i < bundle.entry.length; i++) {
+
+                displayIdentifier(table, bundle.entry[i].resource);
+            }
+        }
+        else
+            displayIdentifier(table, patientObservation);
+
+        document.getElementById("listPatient").appendChild(table);
+    }
+    function setfirstRow(table, cellText) {
+        var row = document.createElement("tr");
+        for (var i = 0; i < cellText.length; i++) {
+            var cell = document.createElement("th");
+            cell.innerHTML = cellText[i];
+            row.appendChild(cell);
+        }
+        table.appendChild(row);
+    }
+    function displayIdentifier(table, patientObservation) {
+        var condition = document.getElementById("conditionPatient").value;
+        var row = document.createElement("tr");
+        var cell0 = document.createElement("td");
+        cell0.innerHTML = table.rows.length;
+        row.appendChild(cell0);
+
+        var cell = document.createElement("td");
+        cell.innerHTML = patientObservation.id;
+        row.appendChild(cell);
+
+        var cell1 = document.createElement("td");
+        cell1.innerHTML = "";
+        for (var i = 0; i < patientObservation.identifier.length; i++) {
+            if (i != 0) cell1.innerHTML += ',<br>';
+            cell1.innerHTML += patientObservation.identifier[i].value;
+        }
+        row.appendChild(cell1);
+
+        if (patientObservation.managingOrganization.reference != "Organization/MITW.ForPHR") {
+            var cell2 = document.createElement("td");
+            cell2.innerHTML = "";
+            for (var i = 0; i < patientObservation.name.length; i++) {
+                if (i != 0) cell2.innerHTML += ',<br>';
+                cell2.innerHTML += patientObservation.name[i].text;
+            }
+            row.appendChild(cell2);
+
+            var cell3 = document.createElement("td");
+            cell3.innerHTML = patientObservation.gender;
+            row.appendChild(cell3);
+
+            var cell4 = document.createElement("td");
+            cell4.innerHTML = patientObservation.birthDate;
+            row.appendChild(cell4);
+        }
+        if (patientObservation.managingOrganization.reference == "Organization/MITW.ForContact") {
+            row.onclick = showContact(row);
+        }
+        var cell8 = document.createElement("td");
+        cell8.innerHTML = patientObservation.managingOrganization.reference;
+
+        row.appendChild(cell8);
+        table.appendChild(row);
+    }
+    var showContact = function (row) {
+        return function () {
+            var cell = row.getElementsByTagName("td")[0];
+            var id = cell.innerHTML;
+            if (previousRow != undefined) previousRow.style.backgroundColor = 'white';
+            row.style.backgroundColor = 'cyan';
+            previousRow = row;
+
+            var color = ['pink', 'yellow'];
+            var contactBox = document.getElementById("contactBox");
+            clearDiv(contactBox);
+            contactBox.style.backgroundColor = "cyan";
+
+            var singlePatient = (patientObservation.entry == undefined) ? patientObservation : patientObservation.entry[id - 1].resource;
+            contactBox.innerHTML = "Id: " + singlePatient.id + '<br>Contact: <br>';
+            for (var i = 0; i < singlePatient.contact.length; i++) {
+                var div = document.createElement("div");
+                div.style.backgroundColor = color[i % 2];
+                div.innerHTML = "Name: ";
+                div.innerHTML += singlePatient.contact[i].name.text + '<br>';
+                div.innerHTML += "Gender: ";
+                div.innerHTML += singlePatient.contact[i].gender + '<br>';
+                div.innerHTML += "Relationship: ";
+                for (var j = 0; j < singlePatient.contact[i].relationship.length; j++) {
+                    if (j != 0) cell6.innerHTML += ',<br>';
+                    div.innerHTML += singlePatient.contact[i].relationship[j].text;
+                }
+                div.innerHTML += "<br>";
+                for (var j = 0; j < singlePatient.contact[i].telecom.length; j++) {
+                    if (j != 0) div.innerHTML += '<br>';
+                    var divStr = '';
+                    if (singlePatient.contact[i].telecom[j].system == "email") {
+                        divStr = singlePatient.contact[i].telecom[j].system + ": <a href='https://mail.google.com/mail/u/0/?view=cm&fs=1&tf=1&to=" + singlePatient.contact[i].telecom[j].value + "'>" + singlePatient.contact[i].telecom[j].value;
+                    }
+                    else if (singlePatient.contact[i].telecom[j].system == "url") {
+                        divStr = singlePatient.contact[i].telecom[j].system + ": <a href='" + singlePatient.contact[i].telecom[j].value + "'>" + singlePatient.contact[i].telecom[j].value;
+                    }
+                    else {
+                        divStr = singlePatient.contact[i].telecom[j].system + ": " + singlePatient.contact[i].telecom[j].value;
+                    }
+                    div.innerHTML += divStr;
+                }
+                if (singlePatient.contact[i].address != undefined) {
+                    div.innerHTML += "<br>Address: ";
+                    div.innerHTML += singlePatient.contact[i].address.text;
+                }
+
+                contactBox.appendChild(div);
+            }
+            contactBox.appendChild(div);
+        };
+    };
+</script>
+
+</html>

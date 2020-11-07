@@ -6,9 +6,10 @@
 
     <meta name="viewport" content="width=device-width, initial-scale=1">
 
-    <link rel='stylesheet' typeof='text/css' media='all' href='http://203.64.84.218/Patient_MITW/Style/Reset.css' />
-    <link rel='stylesheet' typeof='text/css' media='all' href='http://203.64.84.218/Patient_MITW/Style/Site.css' />
-    <link rel='stylesheet' typeof='text/css' media='all' href='http://203.64.84.218/Patient_MITW/Style/Patient.css' />
+    <link rel='stylesheet' typeof='text/css' media='all' href='../Style/Reset.css' />
+    <link rel='stylesheet' typeof='text/css' media='all' href='../Patient_MITW/Style/Site.css' />
+    <link rel='stylesheet' typeof='text/css' media='all' href='../Style/Patient.css' />
+    <!-- http://203.64.84.218/Patient_MITW -->
 
     <title>FHIR 病人</title>
 </head>
@@ -64,8 +65,8 @@
 <script>
     var fhirurl = "https://startfhir.dicom.org.tw/fhir/";   //change to local + token //"https://oauth.dicom.org.tw/fhir"
     var patientObservation;
-    var previousRow;
-    //var token = "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJodHRwczovL29hdXRoLmRpY29tLm9yZy50dyIsInN1YiI6Ik1JLVRXMjAyMOW3peS9nOWwj-e1hCIsImF1ZCI6IjE1MC4xMTcuMTIxLjY3IiwiaWF0IjoxNjAyODE3MjEzLCJleHAiOjE2MDY2NjU2MDAsImp0aSI6Ijk1N2Y2MTA2LTdjZWMtNGMwMS04OTk2LWFhNDVlNmQ4NzIwMSJ9.jCKom90GnMkjXJe9uyjjLZzFOtR0PNajCfLechxuc36RgGEaNUvcmG9HhePrvzdrBjU6af7Kk-U8-xgljNcdPJZYlW0xvAZ1aTX4EvfECTFLJNux3Xcglm4B9Ujwj4CRoVyG1fdkQoX2jt0Wkj6akn4Wo3QD7MFr_sc8hKP4TQ8UNZT4m2MM8dSlc9eLd42ArYGGteQ8pc7VbowoDIgbDLGMWmc-pO481u0BB535JtY4Vw1b0f1y-bhc6tRzOUnMjF2DjOdvZeqOpcFhV6q_lIcm4OazNEhP3YdVXIGTLJHq6BvKjj23lsd2vj1wcNDi4opkAwet765FRV-Tydh6JQ"
+    var previousRow, rowmaxNum = 20;
+    var token = "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJodHRwczovL29hdXRoLmRpY29tLm9yZy50dyIsInN1YiI6Ik1JLVRXMjAyMOW3peS9nOWwj-e1hCIsImF1ZCI6IjE1MC4xMTcuMTIxLjY3IiwiaWF0IjoxNjAyODE3MjEzLCJleHAiOjE2MDY2NjU2MDAsImp0aSI6Ijk1N2Y2MTA2LTdjZWMtNGMwMS04OTk2LWFhNDVlNmQ4NzIwMSJ9.jCKom90GnMkjXJe9uyjjLZzFOtR0PNajCfLechxuc36RgGEaNUvcmG9HhePrvzdrBjU6af7Kk-U8-xgljNcdPJZYlW0xvAZ1aTX4EvfECTFLJNux3Xcglm4B9Ujwj4CRoVyG1fdkQoX2jt0Wkj6akn4Wo3QD7MFr_sc8hKP4TQ8UNZT4m2MM8dSlc9eLd42ArYGGteQ8pc7VbowoDIgbDLGMWmc-pO481u0BB535JtY4Vw1b0f1y-bhc6tRzOUnMjF2DjOdvZeqOpcFhV6q_lIcm4OazNEhP3YdVXIGTLJHq6BvKjj23lsd2vj1wcNDi4opkAwet765FRV-Tydh6JQ"
     function jsFunction(value) {
         var valueBox = document.getElementById("valueBox");
         clearDiv(valueBox);
@@ -91,44 +92,56 @@
         elementID.innerHTML = "";
     }
     function searchPatient() {
+        clearDiv(document.getElementById("contactBox"));
+        clearDiv(document.getElementById("listPatient"));
         var conditionValue = '';
         var condition = document.getElementById("conditionPatient").value;
         if (condition == "Organization")
             conditionValue = document.getElementById("typeOrganization").value;
         else
             conditionValue = document.getElementById("textValue").value;
-        var strUrl;
-        switch (condition) {
-            case "Id":
-                strUrl = fhirurl + "Patient" + "/" + conditionValue;
-                break;
-            case "Identifier":
-                strUrl = fhirurl + "Patient" + "?identifier=" + conditionValue;
-                break;
-            case "Organization":
-                strUrl = fhirurl + "Patient" + "?organization=" + conditionValue;
-                break;
+        if (conditionValue == "" || conditionValue == " ") {
+            alert("Please fill the input text!");
         }
-        getJSON(strUrl);
+        else {
+            var strUrl;
+            switch (condition) {
+                case "Id":
+                    strUrl = fhirurl + "Patient" + "/" + conditionValue;
+                    break;
+                case "Identifier":
+                    strUrl = fhirurl + "Patient" + "?identifier=" + conditionValue;
+                    break;
+                case "Organization":
+                    strUrl = fhirurl + "Patient" + "?organization=" + conditionValue;
+                    break;
+            }
+            getJSON(strUrl, 0);
+        }
     }
-    function getJSON(strUrl) {
+    function getJSON(strUrl, firstrowNum) {
         var xhr = new XMLHttpRequest();
         xhr.open('GET', strUrl, true);//https://orthanc.dicom.tw/dicom-web/studies/1.3.6.1.4.1.14519.5.2.1.9999.103.2445110399502685110179049624124
-        //xhr.setRequestHeader('Authorization', 'Bearer ' + token);
-        //xhr.setRequestHeader("Authorization", "Basic " + token);
+        xhr.setRequestHeader('Authorization', 'Bearer ' + token);
         xhr.setRequestHeader("Content-type", 'application/json');
         xhr.onreadystatechange = function () {
             if (this.readyState == 4) // && this.status == 201) 
             {
                 patientObservation = JSON.parse(this.responseText);
-                //setTablePatient();
-                setTablePatient(patientObservation);
-                //alert(this.responseText);
+                if (patientObservation != undefined && patientObservation.resourceType == "OperationOutcome") {
+                    var errStr = "";
+                    for (var i = 0; i < patientObservation.issue.length; i++) {
+                        errStr += patientObservation.issue[i].diagnostics + '<br>';
+                    }
+                    alert(errStr);
+                }
+                else if (patientObservation.resourceType == "Bundle" && patientObservation.total == 0) alert("Data is not exist!");
+                else setTablePatient(patientObservation, firstrowNum);
             }
         }
         xhr.send();
     }
-    function setTablePatient(patientObservation) {
+    function setTablePatient(patientObservation, firstrowNum) {
         clearDiv(document.getElementById("contactBox"));
         clearDiv(document.getElementById("listPatient"));
         var condition = document.getElementById("conditionPatient").value;
@@ -150,11 +163,33 @@
         if (bundle != undefined) {
             for (var i = 0; i < bundle.entry.length; i++) {
 
-                displayIdentifier(table, bundle.entry[i].resource);
+                displayIdentifier(table, bundle.entry[i].resource, firstrowNum);
+            }
+            if (bundle.link != undefined && bundle.link.length > 1) {
+                var row = document.createElement("tr");
+                var btnNext, btnPrev;
+                for (var i = 0; i < bundle.link.length; i++) {
+                    if (bundle.link[i].relation == "next") {
+                        btnNext = document.createElement("BUTTON");
+                        btnNext.innerHTML = "next";
+                        btnNext.value = bundle.link[i].url;
+                        btnNext.onclick = function () { getJSON(this.value, firstrowNum + rowmaxNum) };
+                    }
+                    if (bundle.link[i].relation == "previous") {
+                        btnPrev = document.createElement("BUTTON");
+                        btnPrev.innerHTML = "previous";
+                        btnPrev.value = bundle.link[i].url;
+                        btnPrev.onclick = function () { getJSON(this.value, firstrowNum - rowmaxNum) };
+
+                    }
+                }
+                if (btnPrev != undefined) row.appendChild(btnPrev);
+                if (btnNext != undefined) row.appendChild(btnNext);
+                table.appendChild(row);
             }
         }
         else
-            displayIdentifier(table, patientObservation);
+            displayIdentifier(table, patientObservation, firstrowNum);
 
         document.getElementById("listPatient").appendChild(table);
     }
@@ -167,11 +202,11 @@
         }
         table.appendChild(row);
     }
-    function displayIdentifier(table, patientObservation) {
+    function displayIdentifier(table, patientObservation, firstrowNum) {
         var condition = document.getElementById("conditionPatient").value;
         var row = document.createElement("tr");
         var cell0 = document.createElement("td");
-        cell0.innerHTML = table.rows.length;
+        cell0.innerHTML = (firstrowNum + table.rows.length);
         row.appendChild(cell0);
 
         var cell = document.createElement("td");
@@ -204,7 +239,7 @@
             row.appendChild(cell4);
         }
         if (patientObservation.managingOrganization.reference == "Organization/MITW.ForContact") {
-            row.onclick = showContact(row);
+            row.onclick = showContact(row, firstrowNum);
         }
         var cell8 = document.createElement("td");
         cell8.innerHTML = patientObservation.managingOrganization.reference;
@@ -212,10 +247,10 @@
         row.appendChild(cell8);
         table.appendChild(row);
     }
-    var showContact = function (row) {
+    var showContact = function (row, firstrowNum) {
         return function () {
             var cell = row.getElementsByTagName("td")[0];
-            var id = cell.innerHTML;
+            var id = cell.innerHTML - firstrowNum;
             if (previousRow != undefined) previousRow.style.backgroundColor = 'white';
             row.style.backgroundColor = 'cyan';
             previousRow = row;
